@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import coloredlogs, logging
 import schedule
 import time
