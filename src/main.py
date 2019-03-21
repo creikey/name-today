@@ -19,7 +19,7 @@ updater = None
 cur_day_announcement = get_announcement()
 
 with open(TOKEN_FILE_NAME, "r") as tf:
-    telegram_token = tf.readline()
+    telegram_token = tf.readline().rstrip()
     logging.info(f"Using token {telegram_token}...")
     updater = Updater(token=telegram_token)
 assert updater
