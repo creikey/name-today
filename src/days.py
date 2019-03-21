@@ -42,4 +42,4 @@ def get_word(day: Day) -> str:
 
 def get_announcement() -> str:
     today = get_today()
-    return f"Today is {get_word(today)} {today.value}!"
+    return f"{get_word(today)} {today.value}"
