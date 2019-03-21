@@ -1,46 +1,61 @@
-import random
-import datetime
 import coloredlogs, logging
-import os.path
-from enum import Enum, auto
+import schedule
+import time
+from telegram import Bot, Update
+from telegram.ext import Updater, CommandHandler
+
+from days import Day, get_today, get_word, get_announcement
 
 coloredlogs.install(level="DEBUG")
 
+TOKEN_FILE_NAME = ".token"
+HELP_TEXT = """\
+/start  start
+/help   show this message
+/today  show today's word
+"""
 
-class Day(Enum):
-    SUNDAY = "Sunday"
-    MONDAY = "Monday"
-    TUESDAY = "Tuesday"
-    WEDNESDAY = "Wednesday"
-    THURSDAY = "Thursday"
-    FRIDAY = "Friday"
-    SATURDAY = "Saturday"
+updater = None
+cur_day_announcement = get_announcement()
 
+with open(TOKEN_FILE_NAME, "r") as tf:
+    telegram_token = tf.readline()
+    logging.info(f"Using token {telegram_token}...")
+    updater = Updater(token=telegram_token)
+assert updater
 
-day_files = {
-    Day.SUNDAY: "sunday-saturday.txt",
-    Day.MONDAY: "monday.txt",
-    Day.TUESDAY: "tuesday.txt",
-    Day.WEDNESDAY: "wednesday.txt",
-    Day.THURSDAY: "thursday.txt",
-    Day.FRIDAY: "friday.txt",
-    Day.SATURDAY: "sunday-saturday.txt",
-}
-
-for d in day_files.keys():
-    if not os.path.isfile(day_files[d]):
-        logging.critical("Could not find file {} for day {}!".format(day_files[d], d))
+dispatcher = updater.dispatcher
 
 
-def get_today() -> Day:
-    now = datetime.datetime.now()
-    return Day(now.strftime("%A"))
+def update_cur_day_announcement():
+    global cur_day_announcement
+    cur_day_announcement = get_announcement()
 
 
-def get_word(day: Day) -> str:
-    with open(day_files[day], "r") as f:
-        return random.choice(f.readlines()).capitalize().rstrip()
+def start(bot: Bot, update: Update):
+    bot.send_message(
+        chat_id=update.message.chat_id,
+        text="I can tell you what day it is! Type /help to see what I can do",
+    )
 
 
-today = get_today()
-logging.info("Today is {} {}!".format(get_word(today), today.value))
+def help(bot: Bot, update: Update):
+    bot.send_message(chat_id=update.message.chat_id, text=HELP_TEXT)
+
+
+def today(bot: Bot, update: Update):
+    logging.debug(f"Sending {cur_day_announcement} to {update.message.chat_id}...")
+    bot.send_message(chat_id=update.message.chat_id, text=cur_day_announcement)
+
+
+commands = ["start", "help", "today"]
+for c in commands:
+    dispatcher.add_handler(CommandHandler(c, locals()[c]))
+
+schedule.every().day.at("00:00").do(update_cur_day_announcement)
+
+updater.start_polling()
+
+while True:
+    schedule.run_pending()
+    time.sleep(1)
